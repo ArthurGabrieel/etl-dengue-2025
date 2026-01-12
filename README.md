@@ -6,6 +6,18 @@ O projeto tem como objetivo **armazenar, limpar e modelar dados de dengue**, tra
 
 ---
 
+## Contribuidores
+
+<table>
+  <tr>
+    <td align="center"><a href="https://github.com/zzzBECK"><img style="border-radius: 50%;" src="https://github.com/zzzBECK.png" width="130px;" alt=""/><br /><sub><b>Alexandre Beck</b></sub></a><br/></td>
+    <td align="center"><a href="https://github.com/ArthurGabrieel"><img style="border-radius: 50%;" src="https://github.com/ArthurGabrieel.png" width="130px;" alt=""/><br /><sub><b>Arthur Gabriel</b></sub></a><br/></td>
+    <td align="center"><a href="https://github.com/AlexandreIJr"><img style="border-radius: 50%;" src="https://github.com/AlexandreLJr.png" width="130px;" alt=""/><br /><sub><b>Alexandre Jr.</b></sub></a><br/></td>
+    <td align="center"><a href="https://github.com/thiagorfreitas"><img style="border-radius: 50%;" src="https://github.com/thiagorfreitas.png" width="130px;" alt=""/><br /><sub><b>Thiago Freitas</b></sub></a><br/></td>
+  </tr>
+</table>
+
+
 ## 📂 Estrutura do Repositório
 
 ```bash
