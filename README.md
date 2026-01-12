@@ -9,7 +9,7 @@ O projeto tem como objetivo **armazenar, limpar e modelar dados de dengue**, tra
 ## 📂 Estrutura do Repositório
 
 ```bash
-dw-medallion/
+etl-dengue-2025/
  ├── Data_Layer/
  │   ├── raw/      # Dados originais (Bronze)
  │   ├── silver/   # Dados limpos e padronizados
