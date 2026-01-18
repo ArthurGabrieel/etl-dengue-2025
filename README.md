@@ -19,20 +19,20 @@ O projeto tem como objetivo **armazenar, limpar e modelar dados de dengue**, tra
 
 ```bash
 # Criar o ambiente virtual
-python -m venv venv
+python -m venv .venv
 
 # Ativar o ambiente
-venv\Scripts\activate
+.venv\Scripts\activate
 ```
 
 **Linux/MacOS:**
 
 ```bash
 # Criar o ambiente virtual
-python3 -m venv venv
+python3 -m venv .venv
 
 # Ativar o ambiente
-source venv/bin/activate
+source .venv/bin/activate
 ```
 
 ### 2. Instalar Dependências
