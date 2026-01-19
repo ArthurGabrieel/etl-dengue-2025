@@ -1,6 +1,6 @@
 # Data Warehouse - Arquitetura Medallion
 
-Este repositório contém o projeto de **Data Warehouse/Lakehouse** baseado na arquitetura **Medallion** (Bronze/Raw, Silver e Gold), utilizando como base de dados o conjunto **Sinan/Dengue 2025**.  
+Este repositório contém o projeto de **Data Warehouse/Lakehouse** baseado na arquitetura **Medallion** (Bronze/Raw, Silver e Gold), utilizando como base de dados o conjunto **Sinan/Dengue 2025**.
 
 O projeto tem como objetivo **armazenar, limpar e modelar dados de dengue**, transformando-os em informações estruturadas para análises de BI, com métricas de acidentes, vítimas, veículos e condições de tráfego.
 
@@ -19,7 +19,6 @@ O projeto tem como objetivo **armazenar, limpar e modelar dados de dengue**, tra
     </table>
 </center>
 
-
 ## 📂 Estrutura do Repositório
 
 ```bash
@@ -29,12 +28,17 @@ etl-dengue-2025/
  │   ├── silver/   # Dados limpos e padronizados
  │   ├── gold/     # Dados modelados para BI (esquema estrela)
  │   └── README.md
- └── Transformer/  # ETLs e transformações das tabelas
+ ├── Transformer/  # ETLs e transformações das tabelas
+ │   ├── bronze_analysis.ipynb      # Análise exploratória da camada Bronze
+ │   └── etl_raw_to_silver.ipynb    # Transformação Bronze → Silver
+ ├── requirements.txt  # Dependências do projeto
+ └── README.md
 ```
+
 ---
 
 ## 🔹 Camadas
 
-- **RAW (Bronze):** dados originais, preservados como coletados.  
-- **Silver:** dados tratados, integrados e enriquecidos.  
-- **Gold:** dados prontos para análise, em modelo estrela (fato e dimensões).  
+- **RAW (Bronze):** dados originais, preservados como coletados.
+- **Silver:** dados tratados, integrados e enriquecidos.
+- **Gold:** dados prontos para análise, em modelo estrela (fato e dimensões).
