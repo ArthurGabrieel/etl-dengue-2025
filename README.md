@@ -29,7 +29,6 @@ etl-dengue-2025/
  │   ├── gold/     # Dados modelados para BI (esquema estrela)
  │   └── README.md
  ├── Transformer/  # ETLs e transformações das tabelas
- │   ├── bronze_analysis.ipynb      # Análise exploratória da camada Bronze
  │   └── etl_raw_to_silver.ipynb    # Transformação Bronze → Silver
  ├── requirements.txt  # Dependências do projeto
  └── README.md
