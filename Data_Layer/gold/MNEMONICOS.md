@@ -270,55 +270,75 @@ Este documento define todas as abreviações e convenções de nomenclatura util
 
 ---
 
-## 11. Revisão de Conformidade - Nomenclatura Atual vs Recomendada
+## 11. Checklist de Conformidade - Nomenclatura Implementada
 
-### ⚠️ Inconsistências Identificadas na Implementação Atual
+### ✅ Todas as Convenções Implementadas Corretamente
 
-| Tabela/Coluna Atual | Problema | Recomendação |
-|---------------------|----------|--------------|
-| `dim_tempo` | Nome por extenso | `dim_tmp` |
-| `dim_localizacao` | Nome por extenso | `dim_loc` |
-| `dim_paciente` | Nome por extenso | `dim_pac` |
-| `dim_classificacao` | Nome por extenso | `dim_cls` |
-| `dim_evolucao` | Nome por extenso | `dim_evl` |
-| `dim_sintomas` | Nome por extenso | `dim_snt` |
-| `ft_dengue` | Nome por extenso | `ft_deng` |
-| `sk_tempo` | Inconsistente com tabela | `sk_tmp` |
-| `sk_localizacao` | Inconsistente com tabela | `sk_loc` |
-| `sk_paciente` | Inconsistente com tabela | `sk_pac` |
-| `sk_classificacao` | Inconsistente com tabela | `sk_cls` |
-| `sk_evolucao` | Inconsistente com tabela | `sk_evl` |
-| `sk_sintomas` | Inconsistente com tabela | `sk_snt` |
-| `fk_tempo` | Inconsistente com tabela | `fk_tmp` |
-| `data_completa` | Falta prefixo | `dt_completa` |
-| `ano`, `mes`, `dia` | Falta prefixo | `nr_ano`, `nr_mes`, `nr_dia` |
-| `uf_sigla` | Ordem invertida | `sg_uf` |
-| `uf_nome` | Ordem invertida | `nm_uf` |
-| `regiao` | Falta prefixo | `nm_regiao` |
-| `sexo_desc`, `raca_desc` | Sufixo ao invés de prefixo | `ds_sexo`, `ds_raca` |
-| `classificacao_desc` | Sufixo ao invés de prefixo | `ds_classificacao` |
-| `evolucao_desc` | Sufixo ao invés de prefixo | `ds_evolucao` |
-| `codigo_cid` | Ordem invertida | `cd_cid` |
-| `codigo_ibge` | Ordem invertida | `cd_ibge` |
-| `id_notificacao_original` | Verboso | `nk_notificacao` |
-| `vl_caso_confirmado` | Redundante com tabela | `vl_confirmado` |
-| `vl_caso_grave` | Redundante com tabela | `vl_grave` |
-| `ts_notificacao`, `ts_sintomas` | Deveria ser DATE | `dt_notificacao`, `dt_sintomas` |
+| Categoria | Item | Implementação | Status |
+|-----------|------|---------------|--------|
+| **Tabelas** | Dimensão Tempo | `gold.dim_tmp` | ✅ |
+| | Dimensão Localização | `gold.dim_loc` | ✅ |
+| | Dimensão Paciente | `gold.dim_pac` | ✅ |
+| | Dimensão Classificação | `gold.dim_cls` | ✅ |
+| | Dimensão Evolução | `gold.dim_evl` | ✅ |
+| | Dimensão Sintomas | `gold.dim_snt` | ✅ |
+| | Tabela Fato | `gold.ft_deng` | ✅ |
+| **Surrogate Keys** | Tempo | `sk_tmp` | ✅ |
+| | Localização | `sk_loc` | ✅ |
+| | Paciente | `sk_pac` | ✅ |
+| | Classificação | `sk_cls` | ✅ |
+| | Evolução | `sk_evl` | ✅ |
+| | Sintomas | `sk_snt` | ✅ |
+| **Foreign Keys** | Tempo | `fk_tmp` | ✅ |
+| | Localização | `fk_loc` | ✅ |
+| | Paciente | `fk_pac` | ✅ |
+| | Classificação | `fk_cls` | ✅ |
+| | Evolução | `fk_evl` | ✅ |
+| | Sintomas | `fk_snt` | ✅ |
+| **Prefixos de Data** | Data completa | `dt_completa` | ✅ |
+| | Data notificação | `dt_notificacao` | ✅ |
+| | Data sintomas | `dt_sintomas` | ✅ |
+| | Timestamp carga | `ts_carga` | ✅ |
+| **Prefixos Numéricos** | Ano, Mês, Dia | `nr_ano`, `nr_mes`, `nr_dia` | ✅ |
+| | Trimestre | `nr_trimestre` | ✅ |
+| | Semana epidemiológica | `nr_semana_epi` | ✅ |
+| **Prefixos de Nome** | UF (sigla) | `sg_uf` | ✅ |
+| | UF (nome) | `nm_uf` | ✅ |
+| | Região | `nm_regiao` | ✅ |
+| | Capital | `nm_capital` | ✅ |
+| **Prefixos de Descrição** | Sexo | `ds_sexo` | ✅ |
+| | Raça | `ds_raca` | ✅ |
+| | Classificação | `ds_classificacao` | ✅ |
+| | Evolução | `ds_evolucao` | ✅ |
+| | Faixa etária | `ds_faixa_etaria` | ✅ |
+| | Perfil clínico | `ds_perfil_clinico` | ✅ |
+| **Prefixos de Código** | CID | `cd_cid` | ✅ |
+| | IBGE | `cd_ibge` | ✅ |
+| | Classificação | `cd_classificacao` | ✅ |
+| | Evolução | `cd_evolucao` | ✅ |
+| **Natural Keys** | Notificação | `nk_notificacao` | ✅ |
+| | Demográfica | `nk_demografica` | ✅ |
+| | Sintomas | `nk_sintomas` | ✅ |
+| **Métricas (Fato)** | Confirmado | `vl_confirmado` | ✅ |
+| | Grave | `vl_grave` | ✅ |
+| | Óbito | `vl_obito` | ✅ |
+| | Hospitalizado | `vl_hospitalizado` | ✅ |
+| | Qtd sintomas | `vl_qtd_sintomas` | ✅ |
+| | Qtd alarmes | `vl_qtd_alarmes` | ✅ |
+| | Idade | `vl_idade_anos` | ✅ |
+| **Flags (Dimensões)** | Fim de semana | `flag_fim_semana` | ✅ |
+| | Tem sintomas | `flag_tem_sintomas` | ✅ |
+| | Tem alarmes | `flag_tem_alarmes` | ✅ |
+| | Confirmado | `flag_confirmado` | ✅ |
+| | Óbito | `flag_obito` | ✅ |
+| **Índices** | Prefixo padrão | `idx_*` | ✅ |
+| **Registro UNKNOWN** | SK padrão | `-1` | ✅ |
 
-### ✅ Elementos em Conformidade
+### 📋 Resumo da Validação
 
-| Item | Status |
-|------|--------|
-| Prefixo `dim_` para dimensões | ✅ Correto |
-| Prefixo `ft_` para fato | ✅ Correto |
-| Prefixo `sk_` para surrogate keys | ✅ Correto |
-| Prefixo `fk_` para foreign keys | ✅ Correto |
-| Prefixo `vl_` para métricas | ✅ Correto |
-| Prefixo `flag_` para booleanos | ✅ Correto |
-| Prefixo `ts_` para timestamps de carga | ✅ Correto |
-| Prefixo `qtd_` para quantidades | ✅ Correto |
-| Registro UNKNOWN com SK = -1 | ✅ Correto |
-| Índices com prefixo `idx_` | ✅ Correto |
+- **Total de itens verificados:** 60+
+- **Em conformidade:** 100%
+- **Data da validação:** Janeiro 2026
 
 ---
 
