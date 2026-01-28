@@ -96,8 +96,7 @@ SELECT
         ((Hospitalizacoes::NUMERIC / NULLIF(Casos_Confirmados, 0)) * 20), 2
     ) AS Indice_Vulnerabilidade
 FROM PerfilDemografico
-ORDER BY Indice_Vulnerabilidade DESC
-LIMIT 20;
+ORDER BY Indice_Vulnerabilidade DESC;
 
 
 -- QUERY 3: SAZONALIDADE E TENDENCIA TEMPORAL POR REGIAO
@@ -219,8 +218,7 @@ SELECT
     ) AS Score_Risco_Clinico
 FROM PerfilClinico
 WHERE Confirmados >= 50  -- Minimo para relevancia
-ORDER BY Score_Risco_Clinico DESC
-LIMIT 30;
+ORDER BY Score_Risco_Clinico DESC;
 
 
 -- QUERY 5: RANKING UFs COM MAIOR E MENOR VARIABILIDADE (DESVIO PADRAO)
@@ -300,11 +298,6 @@ ORDER BY Indice_Heterogeneidade DESC;
 
 -- QUERY 6: RESUMO GERAL PARA DASHBOARD
 
-SELECT 
-    '=== DASHBOARD EXECUTIVO DENGUE 2025 ===' AS Indicador,
-    NULL AS Valor,
-    NULL AS Observacao
-UNION ALL
 SELECT 
     'Total de Notificacoes',
     TO_CHAR(COUNT(*), 'FM999,999,999'),
