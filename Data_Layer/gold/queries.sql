@@ -671,7 +671,120 @@ FROM HotspotsIdentificados
 WHERE Rank_Municipio_UF <= 10  -- Top 10 municipios por UF
 ORDER BY Score_Prioridade_Intervencao DESC;
 
--- QUERY 9: ANALISE DE TEMPO ENTRE SINTOMAS E NOTIFICACAO
+-- QUERY 9: CORRELACAO ESCOLARIDADE x DESFECHO CLINICO (Analise Detalhada)
+
+WITH DadosEscolaridade AS (
+    SELECT 
+        p.DES_ESC AS Escolaridade,
+        CASE 
+            WHEN p.DES_ESC IN ('Analfabeto', '1-4 serie incompleta', '4 serie completa', '5-8 serie incompleta') 
+                THEN 'Fundamental Incompleto ou Menos'
+            WHEN p.DES_ESC IN ('Fundamental completo', 'Medio incompleto', 'Medio completo') 
+                THEN 'Fundamental Completo a Medio'
+            WHEN p.DES_ESC IN ('Superior incompleto', 'Superior completo') 
+                THEN 'Superior (Parcial ou Completo)'
+            ELSE 'Nao Informado/NA'
+        END AS Grupo_Escolaridade,
+        CASE 
+            WHEN p.DES_ESC = 'Analfabeto' THEN 1
+            WHEN p.DES_ESC = '1-4 serie incompleta' THEN 2
+            WHEN p.DES_ESC = '4 serie completa' THEN 3
+            WHEN p.DES_ESC = '5-8 serie incompleta' THEN 4
+            WHEN p.DES_ESC = 'Fundamental completo' THEN 5
+            WHEN p.DES_ESC = 'Medio incompleto' THEN 6
+            WHEN p.DES_ESC = 'Medio completo' THEN 7
+            WHEN p.DES_ESC = 'Superior incompleto' THEN 8
+            WHEN p.DES_ESC = 'Superior completo' THEN 9
+            ELSE 0
+        END AS Ordem_Escolaridade,
+        f.VAL_CON,
+        f.VAL_GRA,
+        f.VAL_OBI,
+        f.VAL_HOS,
+        f.QTD_SNT,
+        f.QTD_ALR,
+        f.VAL_IDA
+    FROM dw.FAT_DEN f
+    JOIN dw.DIM_PAC p ON f.PAC_SRK = p.PAC_SRK
+    WHERE f.VAL_CON = 1
+      AND p.DES_ESC NOT IN ('Ignorado', 'Nao se aplica', 'Nao informado')
+),
+EstatisticasPorEscolaridade AS (
+    SELECT 
+        Escolaridade,
+        Grupo_Escolaridade,
+        Ordem_Escolaridade,
+        COUNT(*) AS Total_Casos,
+        SUM(VAL_GRA) AS Casos_Graves,
+        SUM(VAL_OBI) AS Obitos,
+        SUM(VAL_HOS) AS Hospitalizacoes,
+        ROUND(AVG(QTD_SNT), 2) AS Media_Sintomas,
+        ROUND(AVG(QTD_ALR), 2) AS Media_Alarmes,
+        ROUND(AVG(VAL_IDA), 1) AS Idade_Media,
+        -- Taxas
+        ROUND((SUM(VAL_GRA)::NUMERIC / COUNT(*)) * 100, 2) AS Taxa_Gravidade_Perc,
+        ROUND((SUM(VAL_OBI)::NUMERIC / COUNT(*)) * 100000, 2) AS Taxa_Letalidade_100k,
+        ROUND((SUM(VAL_HOS)::NUMERIC / COUNT(*)) * 100, 2) AS Taxa_Hospitalizacao_Perc
+    FROM DadosEscolaridade
+    GROUP BY Escolaridade, Grupo_Escolaridade, Ordem_Escolaridade
+),
+ComparativoGrupos AS (
+    SELECT 
+        Grupo_Escolaridade,
+        SUM(Total_Casos) AS Total_Casos_Grupo,
+        SUM(Casos_Graves) AS Graves_Grupo,
+        SUM(Obitos) AS Obitos_Grupo,
+        SUM(Hospitalizacoes) AS Hosp_Grupo,
+        ROUND(AVG(Media_Alarmes), 2) AS Media_Alarmes_Grupo,
+        ROUND((SUM(Casos_Graves)::NUMERIC / SUM(Total_Casos)) * 100, 2) AS Taxa_Gravidade_Grupo,
+        ROUND((SUM(Obitos)::NUMERIC / SUM(Total_Casos)) * 100000, 2) AS Taxa_Letalidade_Grupo
+    FROM EstatisticasPorEscolaridade
+    WHERE Grupo_Escolaridade != 'Nao Informado/NA'
+    GROUP BY Grupo_Escolaridade
+)
+SELECT 
+    e.Escolaridade,
+    e.Grupo_Escolaridade,
+    e.Total_Casos,
+    e.Casos_Graves,
+    e.Obitos,
+    e.Hospitalizacoes,
+    e.Media_Sintomas,
+    e.Media_Alarmes,
+    e.Idade_Media,
+    e.Taxa_Gravidade_Perc,
+    e.Taxa_Letalidade_100k,
+    e.Taxa_Hospitalizacao_Perc,
+    -- Percentual do total
+    ROUND((e.Total_Casos::NUMERIC / SUM(e.Total_Casos) OVER()) * 100, 2) AS Perc_Total_Casos,
+    -- Comparacao com grupo Superior (referencia)
+    ROUND(
+        e.Taxa_Letalidade_100k / NULLIF(
+            (SELECT Taxa_Letalidade_Grupo FROM ComparativoGrupos WHERE Grupo_Escolaridade = 'Superior (Parcial ou Completo)'), 0
+        ), 2
+    ) AS Razao_Letalidade_vs_Superior,
+    -- Classificacao de risco
+    CASE 
+        WHEN e.Taxa_Letalidade_100k > 100 AND e.Media_Alarmes > 0.5 
+            THEN 'ALTO RISCO - Intervencao Prioritaria'
+        WHEN e.Taxa_Gravidade_Perc > 5 
+            THEN 'RISCO MODERADO - Atencao Especial'
+        ELSE 'RISCO PADRAO'
+    END AS Classificacao_Risco,
+    -- Insight sobre determinantes sociais
+    CASE 
+        WHEN e.Ordem_Escolaridade <= 4 AND e.Taxa_Letalidade_100k > 50 
+            THEN 'DETERMINANTE SOCIAL: Baixa escolaridade associada a pior desfecho'
+        WHEN e.Ordem_Escolaridade <= 4 
+            THEN 'GRUPO VULNERAVEL: Requer atencao em politicas publicas'
+        ELSE 'GRUPO COM MAIOR ACESSO A INFORMACAO/SAUDE'
+    END AS Insight_Determinante_Social
+FROM EstatisticasPorEscolaridade e
+WHERE e.Grupo_Escolaridade != 'Nao Informado/NA'
+ORDER BY e.Ordem_Escolaridade;
+
+
+-- QUERY 10: ANALISE DE TEMPO ENTRE SINTOMAS E NOTIFICACAO
 WITH TempoNotificacao AS (
     SELECT 
         f.FAT_SRK,
