@@ -1,20 +1,4 @@
--- ============================================================================
--- QUERIES ANALITICAS - DATA WAREHOUSE DENGUE 2025
--- ============================================================================
--- Autor: ETL Dengue 2025
--- Schema: gold
--- Descricao: Conjunto de 5 queries complexas para analise epidemiologica
--- Nomenclatura: Padrao corporativo 3 letras UPPERCASE (ver MNEMONICOS.md)
--- ============================================================================
-
-
--- ============================================================================
 -- QUERY 1: TOP 5 UFs COM MELHOR E PIOR DESEMPENHO EM LETALIDADE
--- ============================================================================
--- Objetivo: Identificar os estados com menor e maior taxa de letalidade
--- entre os casos confirmados, considerando apenas UFs com volume significativo
--- de casos (minimo 1000 confirmados) para evitar distorcoes estatisticas.
--- ============================================================================
 
 WITH LetalidadeUF AS (
     SELECT 
@@ -68,13 +52,7 @@ SELECT * FROM Top5_Maior_Letalidade
 ORDER BY Taxa_Letalidade_100k ASC;
 
 
--- ============================================================================
 -- QUERY 2: ANALISE DE VULNERABILIDADE POR PERFIL DEMOGRAFICO
--- ============================================================================
--- Objetivo: Cruzar faixa etaria, sexo e raca para identificar perfis 
--- demograficos mais vulneraveis (maior taxa de gravidade e letalidade).
--- Essencial para direcionar politicas publicas de prevencao.
--- ============================================================================
 
 WITH PerfilDemografico AS (
     SELECT 
@@ -122,13 +100,7 @@ ORDER BY Indice_Vulnerabilidade DESC
 LIMIT 20;
 
 
--- ============================================================================
 -- QUERY 3: SAZONALIDADE E TENDENCIA TEMPORAL POR REGIAO
--- ============================================================================
--- Objetivo: Analisar a distribuicao temporal dos casos por regiao,
--- identificando picos epidemicos, semanas epidemiologicas criticas
--- e comparando comportamento entre regioes do Brasil.
--- ============================================================================
 
 WITH CasosPorSemana AS (
     SELECT 
@@ -189,13 +161,7 @@ WHERE Ano = 2025
 ORDER BY Regiao, Ano, Semana_Epidemiologica;
 
 
--- ============================================================================
 -- QUERY 4: ANALISE DE PERFIL CLINICO E PROGRESSAO DA DOENCA
--- ============================================================================
--- Objetivo: Correlacionar quantidade de sintomas e alarmes com desfecho 
--- clinico (cura, obito, hospitalizacao). Identificar padroes que podem 
--- prever evolucao para casos graves.
--- ============================================================================
 
 WITH PerfilClinico AS (
     SELECT 
@@ -257,13 +223,7 @@ ORDER BY Score_Risco_Clinico DESC
 LIMIT 30;
 
 
--- ============================================================================
 -- QUERY 5: RANKING UFs COM MAIOR E MENOR VARIABILIDADE (DESVIO PADRAO)
--- ============================================================================
--- Objetivo: Identificar estados com maior heterogeneidade na distribuicao
--- de casos graves e letalidade. Alta variabilidade pode indicar 
--- desigualdade no acesso ao tratamento ou subnotificacao.
--- ============================================================================
 
 WITH EstatisticasUF AS (
     SELECT 
@@ -338,11 +298,7 @@ SELECT * FROM Top5_Menor_Variabilidade
 ORDER BY Indice_Heterogeneidade DESC;
 
 
--- ============================================================================
--- BONUS: RESUMO EXECUTIVO CONSOLIDADO
--- ============================================================================
--- Query adicional que gera um dashboard consolidado com os principais KPIs
--- ============================================================================
+-- QUERY 6: RESUMO GERAL PARA DASHBOARD
 
 SELECT 
     '=== DASHBOARD EXECUTIVO DENGUE 2025 ===' AS Indicador,
