@@ -54,49 +54,91 @@ ORDER BY Taxa_Letalidade_100k ASC;
 
 -- QUERY 2: ANALISE DE VULNERABILIDADE POR PERFIL DEMOGRAFICO
 
-WITH PerfilDemografico AS (
+WITH PerfilPaciente AS (
     SELECT 
         p.DES_FAI_ETA_DET AS Faixa_Etaria,
         p.DES_SEX AS Sexo,
         p.DES_RAC AS Raca,
-        COUNT(*) AS Total_Notificacoes,
-        SUM(f.VAL_CON) AS Casos_Confirmados,
-        SUM(f.VAL_GRA) AS Casos_Graves,
-        SUM(f.VAL_OBI) AS Obitos,
-        SUM(f.VAL_HOS) AS Hospitalizacoes,
-        ROUND(AVG(f.VAL_IDA), 1) AS Idade_Media
+        f.VAL_IDA AS Idade,
+        f.QTD_SNT AS Qtd_Sintomas,
+        f.QTD_ALR AS Qtd_Alarmes,
+        f.VAL_GRA AS Grave,
+        f.VAL_OBI AS Obito,
+        f.VAL_HOS AS Hospitalizado,
+        f.VAL_CON
     FROM dw.FAT_DEN f
     JOIN dw.DIM_PAC p ON f.PAC_SRK = p.PAC_SRK
     WHERE f.VAL_CON = 1
-    GROUP BY p.DES_FAI_ETA_DET, p.DES_SEX, p.DES_RAC
-    HAVING COUNT(*) >= 100  -- Minimo para relevancia estatistica
+),
+AnaliseGrupos AS (
+    SELECT 
+        Faixa_Etaria,
+        Sexo,
+        Raca,
+        COUNT(*) AS Total_Casos,
+        SUM(Grave) AS Casos_Graves,
+        SUM(Obito) AS Obitos,
+        SUM(Hospitalizado) AS Hospitalizacoes,
+        ROUND(AVG(Idade), 1) AS Idade_Media,
+        ROUND(AVG(Qtd_Sintomas), 2) AS Media_Sintomas,
+        ROUND(AVG(Qtd_Alarmes), 2) AS Media_Alarmes,
+        -- Probabilidade de evolucao para caso grave
+        ROUND((SUM(Grave)::NUMERIC / COUNT(*)) * 100, 2) AS Prob_Gravidade_Perc,
+        -- Probabilidade de obito
+        ROUND((SUM(Obito)::NUMERIC / COUNT(*)) * 100, 4) AS Prob_Obito_Perc,
+        -- Probabilidade de hospitalizacao
+        ROUND((SUM(Hospitalizado)::NUMERIC / COUNT(*)) * 100, 2) AS Prob_Hospitalizacao_Perc
+    FROM PerfilPaciente
+    GROUP BY Faixa_Etaria, Sexo, Raca
+    HAVING COUNT(*) >= 100
+),
+RankingRisco AS (
+    SELECT 
+        *,
+        -- Indice de Risco Composto (IRC): combina probabilidades ponderadas
+        ROUND(
+            (Prob_Obito_Perc * 100) +
+            (Prob_Gravidade_Perc * 2) +
+            (Prob_Hospitalizacao_Perc * 1) +
+            (Media_Alarmes * 5), 2
+        ) AS Indice_Risco_Composto,
+        -- Razao de Risco comparada com media geral
+        ROUND(
+            Prob_Obito_Perc / NULLIF(
+                (SELECT AVG(Prob_Obito_Perc) FROM AnaliseGrupos), 0
+            ), 2
+        ) AS Razao_Risco_Obito
+    FROM AnaliseGrupos
 )
 SELECT 
     Faixa_Etaria,
     Sexo,
     Raca,
-    Casos_Confirmados,
+    Total_Casos,
     Casos_Graves,
     Obitos,
-    Hospitalizacoes,
     Idade_Media,
-    ROUND(
-        (Casos_Graves::NUMERIC / NULLIF(Casos_Confirmados, 0)) * 100, 2
-    ) AS Perc_Gravidade,
-    ROUND(
-        (Obitos::NUMERIC / NULLIF(Casos_Confirmados, 0)) * 100000, 2
-    ) AS Taxa_Letalidade_100k,
-    ROUND(
-        (Hospitalizacoes::NUMERIC / NULLIF(Casos_Confirmados, 0)) * 100, 2
-    ) AS Perc_Hospitalizacao,
-    -- Indice de Vulnerabilidade Composto (IVC)
-    ROUND(
-        ((Casos_Graves::NUMERIC / NULLIF(Casos_Confirmados, 0)) * 50) +
-        ((Obitos::NUMERIC / NULLIF(Casos_Confirmados, 0)) * 100000 * 0.3) +
-        ((Hospitalizacoes::NUMERIC / NULLIF(Casos_Confirmados, 0)) * 20), 2
-    ) AS Indice_Vulnerabilidade
-FROM PerfilDemografico
-ORDER BY Indice_Vulnerabilidade DESC;
+    Media_Sintomas,
+    Media_Alarmes,
+    Prob_Gravidade_Perc,
+    Prob_Obito_Perc,
+    Prob_Hospitalizacao_Perc,
+    Indice_Risco_Composto,
+    Razao_Risco_Obito,
+    CASE 
+        WHEN Indice_Risco_Composto >= 100 THEN 'RISCO MUITO ALTO - Grupo Prioritario'
+        WHEN Indice_Risco_Composto >= 50 THEN 'RISCO ALTO - Atencao Especial'
+        WHEN Indice_Risco_Composto >= 25 THEN 'RISCO MODERADO - Monitoramento'
+        ELSE 'RISCO BAIXO - Grupo Protegido'
+    END AS Classificacao_Risco,
+    CASE 
+        WHEN Razao_Risco_Obito >= 2.0 THEN 'Risco 2x Maior que Media'
+        WHEN Razao_Risco_Obito >= 1.5 THEN 'Risco 50% Maior que Media'
+        WHEN Razao_Risco_Obito <= 0.5 THEN 'Fator Protetor - 50% Menor'
+        ELSE 'Similar a Media'
+    END AS Comparacao_Risco
+FROM RankingRisco
+ORDER BY Indice_Risco_Composto DESC;
 
 
 -- QUERY 3: SAZONALIDADE E TENDENCIA TEMPORAL POR REGIAO
@@ -351,3 +393,340 @@ SELECT
     TO_CHAR(ROUND((SUM(VAL_HOS)::NUMERIC / NULLIF(SUM(VAL_CON), 0)) * 100, 2), 'FM990.00') || '%',
     'Hospitalizados / Confirmados'
 FROM dw.FAT_DEN;
+
+
+-- QUERY 7 : ANALISE EPIDEMIOLOGICA TRIMESTRAL POR REGIAO
+
+WITH CasosTrimestre AS (
+    SELECT 
+        t.NUM_ANO AS Ano,
+        t.NUM_TRI AS Trimestre,
+        t.DES_ANO_TRI AS Periodo,
+        l.NOM_REG AS Regiao,
+        SUM(f.VAL_CON) AS Confirmados,
+        SUM(f.VAL_GRA) AS Graves,
+        SUM(f.VAL_OBI) AS Obitos,
+        SUM(f.VAL_HOS) AS Hospitalizados,
+        ROUND(AVG(f.QTD_SNT), 2) AS Media_Sintomas,
+        ROUND(AVG(f.QTD_ALR), 2) AS Media_Alarmes
+    FROM gold.FAT_DEN f
+    JOIN gold.DIM_TMP t ON f.TMP_SRK = t.TMP_SRK
+    JOIN gold.DIM_LOC l ON f.LOC_SRK = l.LOC_SRK
+    WHERE f.VAL_CON = 1
+    GROUP BY t.NUM_ANO, t.NUM_TRI, t.DES_ANO_TRI, l.NOM_REG
+),
+ComVariacao AS (
+    SELECT 
+        *,
+        -- Casos do trimestre anterior (mesma região)
+        LAG(Confirmados) OVER (PARTITION BY Regiao ORDER BY Ano, Trimestre) AS Confirmados_Tri_Anterior,
+        -- Variação percentual trimestral
+        ROUND(
+            ((Confirmados - LAG(Confirmados) OVER (PARTITION BY Regiao ORDER BY Ano, Trimestre))::NUMERIC 
+            / NULLIF(LAG(Confirmados) OVER (PARTITION BY Regiao ORDER BY Ano, Trimestre), 0)) * 100, 2
+        ) AS Variacao_Trimestral_Perc,
+        -- Ranking de casos por trimestre
+        RANK() OVER (PARTITION BY Ano, Trimestre ORDER BY Confirmados DESC) AS Ranking_Regiao
+    FROM CasosTrimestre
+),
+TotalTrimestre AS (
+    SELECT Ano, Trimestre, SUM(Confirmados) AS Total_Brasil
+    FROM CasosTrimestre
+    GROUP BY Ano, Trimestre
+)
+SELECT 
+    c.Periodo,
+    c.Ano,
+    c.Trimestre,
+    c.Regiao,
+    c.Confirmados,
+    c.Graves,
+    c.Obitos,
+    c.Hospitalizados,
+    c.Media_Sintomas,
+    c.Media_Alarmes,
+    c.Ranking_Regiao,
+    -- Percentual do Brasil
+    ROUND((c.Confirmados::NUMERIC / tt.Total_Brasil) * 100, 2) AS Perc_Brasil,
+    -- Taxas
+    ROUND((c.Graves::NUMERIC / c.Confirmados) * 100, 2) AS Taxa_Gravidade_Perc,
+    ROUND((c.Obitos::NUMERIC / c.Confirmados) * 100000, 2) AS Taxa_Letalidade_100k,
+    -- Variação
+    c.Confirmados_Tri_Anterior,
+    c.Variacao_Trimestral_Perc,
+    -- Tendência
+    CASE 
+        WHEN c.Variacao_Trimestral_Perc IS NULL THEN 'Primeiro Período'
+        WHEN c.Variacao_Trimestral_Perc > 100 THEN 'CRÍTICO - Explosão de Casos (+100%)'
+        WHEN c.Variacao_Trimestral_Perc > 50 THEN 'ALERTA - Crescimento Acelerado (+50%)'
+        WHEN c.Variacao_Trimestral_Perc > 0 THEN 'Crescimento Moderado'
+        WHEN c.Variacao_Trimestral_Perc BETWEEN -30 AND 0 THEN 'Estabilização/Leve Queda'
+        ELSE 'Queda Significativa'
+    END AS Tendencia_Epidemiologica
+FROM ComVariacao c
+JOIN TotalTrimestre tt ON c.Ano = tt.Ano AND c.Trimestre = tt.Trimestre
+ORDER BY c.Ano, c.Trimestre, c.Ranking_Regiao;
+
+
+-- QUERY 8: ANALISE DE EFETIVIDADE DO SISTEMA DE SAUDE POR REGIAO
+
+WITH IndicadoresRegionais AS (
+    SELECT 
+        l.NOM_REG AS Regiao,
+        l.SIG_UNF AS UF,
+        COUNT(*) AS Total_Notificacoes,
+        SUM(f.VAL_CON) AS Confirmados,
+        SUM(f.VAL_GRA) AS Graves,
+        SUM(f.VAL_OBI) AS Obitos,
+        SUM(f.VAL_HOS) AS Hospitalizados,
+        -- Casos graves que receberam hospitalizacao
+        SUM(CASE WHEN f.VAL_GRA = 1 AND f.VAL_HOS = 1 THEN 1 ELSE 0 END) AS Graves_Hospitalizados,
+        -- Casos graves que nao foram hospitalizados (falha do sistema?)
+        SUM(CASE WHEN f.VAL_GRA = 1 AND f.VAL_HOS = 0 THEN 1 ELSE 0 END) AS Graves_Nao_Hospitalizados,
+        -- Obitos que foram hospitalizados
+        SUM(CASE WHEN f.VAL_OBI = 1 AND f.VAL_HOS = 1 THEN 1 ELSE 0 END) AS Obitos_Com_Hospitalizacao,
+        -- Obitos sem hospitalizacao (morte antes de chegar ao hospital)
+        SUM(CASE WHEN f.VAL_OBI = 1 AND f.VAL_HOS = 0 THEN 1 ELSE 0 END) AS Obitos_Sem_Hospitalizacao,
+        ROUND(AVG(f.QTD_ALR), 2) AS Media_Sinais_Alarme
+    FROM dw.FAT_DEN f
+    JOIN dw.DIM_LOC l ON f.LOC_SRK = l.LOC_SRK
+    WHERE f.VAL_CON = 1
+    GROUP BY l.NOM_REG, l.SIG_UNF
+),
+MetricasEfetividade AS (
+    SELECT 
+        Regiao,
+        UF,
+        Confirmados,
+        Graves,
+        Obitos,
+        Hospitalizados,
+        Graves_Hospitalizados,
+        Graves_Nao_Hospitalizados,
+        Obitos_Com_Hospitalizacao,
+        Obitos_Sem_Hospitalizacao,
+        Media_Sinais_Alarme,
+        -- Taxa de cobertura hospitalar para casos graves
+        ROUND(
+            (Graves_Hospitalizados::NUMERIC / NULLIF(Graves, 0)) * 100, 2
+        ) AS Taxa_Cobertura_Hospitalar_Perc,
+        -- Percentual de obitos que chegaram ao hospital
+        ROUND(
+            (Obitos_Com_Hospitalizacao::NUMERIC / NULLIF(Obitos, 0)) * 100, 2
+        ) AS Perc_Obitos_Hospitalizados,
+        -- Taxa de letalidade hospitalar (obitos entre hospitalizados)
+        ROUND(
+            (Obitos_Com_Hospitalizacao::NUMERIC / NULLIF(Hospitalizados, 0)) * 100, 2
+        ) AS Taxa_Letalidade_Hospitalar_Perc,
+        -- Taxa de letalidade geral
+        ROUND(
+            (Obitos::NUMERIC / NULLIF(Confirmados, 0)) * 100, 4
+        ) AS Taxa_Letalidade_Geral_Perc
+    FROM IndicadoresRegionais
+)
+SELECT 
+    Regiao,
+    UF,
+    Confirmados,
+    Graves,
+    Obitos,
+    Hospitalizados,
+    Taxa_Cobertura_Hospitalar_Perc,
+    Perc_Obitos_Hospitalizados,
+    Taxa_Letalidade_Hospitalar_Perc,
+    Taxa_Letalidade_Geral_Perc,
+    Media_Sinais_Alarme,
+    -- Score de Efetividade do Sistema (0-100, maior = melhor)
+    ROUND(
+        (Taxa_Cobertura_Hospitalar_Perc * 0.4) +
+        (Perc_Obitos_Hospitalizados * 0.3) +
+        ((100 - Taxa_Letalidade_Hospitalar_Perc) * 0.3), 2
+    ) AS Score_Efetividade_Sistema,
+    CASE 
+        WHEN Taxa_Cobertura_Hospitalar_Perc >= 90 AND Taxa_Letalidade_Hospitalar_Perc < 5 
+            THEN 'EXCELENTE - Sistema Eficiente'
+        WHEN Taxa_Cobertura_Hospitalar_Perc >= 75 AND Taxa_Letalidade_Hospitalar_Perc < 10 
+            THEN 'BOM - Atendimento Adequado'
+        WHEN Taxa_Cobertura_Hospitalar_Perc >= 60 OR Taxa_Letalidade_Hospitalar_Perc < 15 
+            THEN 'REGULAR - Necessita Melhorias'
+        ELSE 'CRITICO - Sistema Sobrecarregado'
+    END AS Avaliacao_Sistema
+FROM MetricasEfetividade
+WHERE Confirmados >= 1000
+ORDER BY Score_Efetividade_Sistema DESC;
+
+    SELECT 
+        l.NOM_REG AS Regiao,
+        l.SIG_UNF AS UF,
+        l.NOM_UNF AS Nome_UF,
+        l.COD_UNM AS Cod_Municipio,
+        l.NOM_UNM AS Nome_Municipio,
+        COUNT(*) AS Total_Casos,
+        SUM(f.VAL_CON) AS Confirmados,
+        SUM(f.VAL_GRA) AS Graves,
+        SUM(f.VAL_OBI) AS Obitos,
+        ROUND(AVG(f.VAL_IDA), 1) AS Idade_Media,
+        ROUND(AVG(f.QTD_SNT), 2) AS Media_Sintomas,
+        ROUND(AVG(f.QTD_ALR), 2) AS Media_Alarmes
+    FROM gold.FAT_DEN f
+    JOIN gold.DIM_LOC l ON f.LOC_SRK = l.LOC_SRK
+    WHERE f.VAL_CON = 1
+    GROUP BY l.NOM_REG, l.SIG_UNF, l.NOM_UNF, l.COD_UNM, l.NOM_UNM
+    HAVING COUNT(*) >= 50
+),
+EstatisticasUF AS (
+    SELECT 
+        Regiao,
+        UF,
+        Nome_UF,
+        COUNT(DISTINCT Cod_Municipio) AS Total_Municipios_Afetados,
+        SUM(Confirmados) AS Total_Confirmados_UF,
+        SUM(Graves) AS Total_Graves_UF,
+        SUM(Obitos) AS Total_Obitos_UF,
+        ROUND(AVG(Confirmados), 0) AS Media_Casos_Por_Municipio,
+        ROUND(STDDEV(Confirmados), 0) AS Desvio_Padrao_Casos,
+        ROUND(AVG(Media_Alarmes), 2) AS Media_Alarmes_UF,
+        MAX(Confirmados) AS Max_Casos_Municipio,
+        MIN(Confirmados) AS Min_Casos_Municipio
+    FROM DadosGeograficos
+    GROUP BY Regiao, UF, Nome_UF
+),
+AnaliseConcentracao AS (
+    SELECT 
+        d.Regiao,
+        d.UF,
+        d.Nome_UF,
+        e.Total_Municipios_Afetados,
+        e.Total_Confirmados_UF,
+        e.Media_Casos_Por_Municipio,
+        e.Desvio_Padrao_Casos,
+        d.Nome_Municipio,
+        d.Confirmados AS Casos_Municipio,
+        d.Graves AS Graves_Municipio,
+        d.Obitos AS Obitos_Municipio,
+        d.Media_Alarmes,
+        -- Percentual de casos do municipio no total da UF
+        ROUND((d.Confirmados::NUMERIC / e.Total_Confirmados_UF) * 100, 2) AS Perc_Casos_Na_UF,
+        -- Indice de Concentracao (Herfindahl-Hirschman simplificado)
+        ROUND(
+            POWER(d.Confirmados::NUMERIC / e.Total_Confirmados_UF, 2) * 10000, 2
+        ) AS Indice_HH,
+        -- Z-score (quantos desvios padrao acima da media)
+        ROUND(
+            (d.Confirmados - e.Media_Casos_Por_Municipio)::NUMERIC / 
+            NULLIF(e.Desvio_Padrao_Casos, 0), 2
+        ) AS Z_Score,
+        -- Taxa de letalidade do municipio
+        ROUND((d.Obitos::NUMERIC / NULLIF(d.Confirmados, 0)) * 100, 4) AS Taxa_Letalidade_Mun,
+        -- Taxa de gravidade do municipio
+        ROUND((d.Graves::NUMERIC / NULLIF(d.Confirmados, 0)) * 100, 2) AS Taxa_Gravidade_Mun
+    FROM DadosGeograficos d
+    JOIN EstatisticasUF e ON d.UF = e.UF
+),
+HotspotsIdentificados AS (
+    SELECT 
+        *,
+        -- Rank do municipio dentro da UF
+        ROW_NUMBER() OVER (PARTITION BY UF ORDER BY Casos_Municipio DESC) AS Rank_Municipio_UF,
+        CASE 
+            WHEN Z_Score >= 3.0 THEN 'HOTSPOT CRITICO - Outlier Extremo'
+            WHEN Z_Score >= 2.0 THEN 'HOTSPOT SEVERO - Alta Concentracao'
+            WHEN Z_Score >= 1.0 THEN 'HOTSPOT MODERADO - Acima da Media'
+            WHEN Z_Score BETWEEN -1.0 AND 1.0 THEN 'PADRAO NORMAL'
+            ELSE 'BAIXA INCIDENCIA'
+        END AS Classificacao_Hotspot,
+        CASE 
+            WHEN Perc_Casos_Na_UF >= 50 THEN 'CONCENTRACAO MASSIVA - >50% dos Casos'
+            WHEN Perc_Casos_Na_UF >= 25 THEN 'CONCENTRACAO ALTA - 25-50% dos Casos'
+            WHEN Perc_Casos_Na_UF >= 10 THEN 'CONCENTRACAO MODERADA - 10-25%'
+            ELSE 'DISPERSAO GEOGRAFICA'
+        END AS Nivel_Concentracao
+    FROM AnaliseConcentracao
+)
+SELECT 
+    Regiao,
+    UF,
+    Nome_UF,
+    Nome_Municipio,
+    Casos_Municipio,
+    Graves_Municipio,
+    Obitos_Municipio,
+    Taxa_Letalidade_Mun,
+    Taxa_Gravidade_Mun,
+    Media_Alarmes,
+    Perc_Casos_Na_UF,
+    Z_Score,
+    Rank_Municipio_UF,
+    Classificacao_Hotspot,
+    Nivel_Concentracao,
+    Total_Municipios_Afetados,
+    -- Score de Prioridade para Intervencao
+    ROUND(
+        (Z_Score * 10) +
+        (Perc_Casos_Na_UF * 2) +
+        (Taxa_Letalidade_Mun * 1000) +
+        (Media_Alarmes * 5), 2
+    ) AS Score_Prioridade_Intervencao
+FROM HotspotsIdentificados
+WHERE Rank_Municipio_UF <= 10  -- Top 10 municipios por UF
+ORDER BY Score_Prioridade_Intervencao DESC;
+
+-- QUERY 9: ANALISE DE TEMPO ENTRE SINTOMAS E NOTIFICACAO
+WITH TempoNotificacao AS (
+    SELECT 
+        f.FAT_SRK,
+        f.VAL_CON,
+        f.VAL_GRA,
+        f.VAL_OBI,
+        f.VAL_HOS,
+        f.DAT_NOT,
+        f.DAT_SNT,
+        CASE 
+            WHEN f.DAT_SNT IS NULL THEN 'Sem data sintomas'
+            WHEN f.DAT_NOT - f.DAT_SNT < 0 THEN 'Inconsistente (erro)'
+            WHEN f.DAT_NOT - f.DAT_SNT = 0 THEN '0 - Mesmo dia'
+            WHEN f.DAT_NOT - f.DAT_SNT BETWEEN 1 AND 3 THEN '1 - Até 3 dias'
+            WHEN f.DAT_NOT - f.DAT_SNT BETWEEN 4 AND 7 THEN '2 - 4 a 7 dias'
+            WHEN f.DAT_NOT - f.DAT_SNT BETWEEN 8 AND 14 THEN '3 - 8 a 14 dias'
+            ELSE '4 - Mais de 14 dias'
+        END AS Faixa_Tempo_Notificacao,
+        CASE 
+            WHEN f.DAT_SNT IS NULL THEN NULL
+            ELSE f.DAT_NOT - f.DAT_SNT 
+        END AS Dias_Ate_Notificacao
+    FROM dw.FAT_DEN f
+),
+EstatisticasTempo AS (
+    SELECT 
+        Faixa_Tempo_Notificacao,
+        COUNT(*) AS Total_Casos,
+        SUM(VAL_CON) AS Confirmados,
+        SUM(VAL_GRA) AS Graves,
+        SUM(VAL_OBI) AS Obitos,
+        SUM(VAL_HOS) AS Hospitalizados,
+        ROUND(AVG(Dias_Ate_Notificacao), 1) AS Media_Dias
+    FROM TempoNotificacao
+    WHERE Faixa_Tempo_Notificacao != 'Inconsistente (erro)'
+    GROUP BY Faixa_Tempo_Notificacao
+)
+SELECT 
+    Faixa_Tempo_Notificacao,
+    Total_Casos,
+    Confirmados,
+    Graves,
+    Obitos,
+    Hospitalizados,
+    Media_Dias,
+    ROUND((Total_Casos::NUMERIC / SUM(Total_Casos) OVER()) * 100, 2) AS Perc_do_Total,
+    ROUND((Graves::NUMERIC / NULLIF(Confirmados, 0)) * 100, 2) AS Taxa_Gravidade_Perc,
+    ROUND((Obitos::NUMERIC / NULLIF(Confirmados, 0)) * 100000, 2) AS Taxa_Letalidade_100k,
+    -- Insight: notificações tardias tendem a ter casos mais graves?
+    CASE 
+        WHEN Faixa_Tempo_Notificacao IN ('3 - 8 a 14 dias', '4 - Mais de 14 dias') 
+        THEN 'ALERTA: Notificação Tardia'
+        WHEN Faixa_Tempo_Notificacao = '0 - Mesmo dia' 
+        THEN 'EXCELENTE: Vigilância Ágil'
+        ELSE 'ADEQUADO'
+    END AS Avaliacao_Vigilancia
+FROM EstatisticasTempo
+ORDER BY Faixa_Tempo_Notificacao;
