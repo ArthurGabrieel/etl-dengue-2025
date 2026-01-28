@@ -1,191 +1,250 @@
 -- =============================================
 -- GOLD LAYER DDL - DENGUE DATA WAREHOUSE
 -- Star Schema: 1 Fact Table + 6 Dimensions
--- Nomenclatura padronizada conforme DICIONARIO_MNEMONICOS.md
+-- Padrao: Nomenclatura corporativa 3 letras UPPERCASE
 -- =============================================
 
--- Remover schema existente para recriação
-DROP SCHEMA IF EXISTS gold CASCADE;
+CREATE SCHEMA IF NOT EXISTS gold;
 
--- Criar schema gold
-CREATE SCHEMA gold;
+COMMENT ON SCHEMA gold IS 'Camada Gold - Star Schema Dengue';
+
+-- Remover tabelas existentes
+DROP TABLE IF EXISTS gold.FAT_DEN CASCADE;
+DROP TABLE IF EXISTS gold.DIM_TMP CASCADE;
+DROP TABLE IF EXISTS gold.DIM_LOC CASCADE;
+DROP TABLE IF EXISTS gold.DIM_PAC CASCADE;
+DROP TABLE IF EXISTS gold.DIM_CLS CASCADE;
+DROP TABLE IF EXISTS gold.DIM_EVL CASCADE;
+DROP TABLE IF EXISTS gold.DIM_SNT CASCADE;
 
 -- =============================================
--- DIMENSÕES
+-- DIMENSOES
 -- =============================================
 
--- DIMENSÃO 1: dim_tmp (Tempo) - OBRIGATÓRIA
-CREATE TABLE gold.dim_tmp (
-    sk_tmp SERIAL PRIMARY KEY,
-    dt_completa DATE NOT NULL UNIQUE,
-    nr_ano INTEGER NOT NULL,
-    nr_mes INTEGER NOT NULL,
-    nr_dia INTEGER NOT NULL,
-    nr_trimestre INTEGER NOT NULL,
-    nr_semana_epi INTEGER NOT NULL,
-    nr_dia_semana INTEGER NOT NULL,
-    nm_dia TEXT NOT NULL,
-    flag_fim_semana BOOLEAN NOT NULL,
-    ds_mes_ano TEXT NOT NULL,
-    ds_ano_trimestre TEXT NOT NULL,
-    ts_carga TIMESTAMP DEFAULT NOW()
+-- DIMENSAO 1: DIM_TMP (Tempo)
+CREATE TABLE gold.DIM_TMP (
+    TMP_SRK BIGINT PRIMARY KEY,
+    DAT_COM DATE NOT NULL UNIQUE,
+    NUM_ANO INTEGER NOT NULL,
+    NUM_MES INTEGER NOT NULL,
+    NUM_DIA INTEGER NOT NULL,
+    NUM_TRI INTEGER NOT NULL,
+    NUM_SEM_EPI INTEGER NOT NULL,
+    NUM_DIA_SEM INTEGER NOT NULL,
+    NOM_DIA VARCHAR(20) NOT NULL,
+    IND_FDS INTEGER NOT NULL,
+    DES_MES_ANO VARCHAR(10) NOT NULL,
+    DES_ANO_TRI VARCHAR(10) NOT NULL
 );
 
--- Registro UNKNOWN para valores ausentes
-INSERT INTO gold.dim_tmp (sk_tmp, dt_completa, nr_ano, nr_mes, nr_dia, nr_trimestre, nr_semana_epi, nr_dia_semana, nm_dia, flag_fim_semana, ds_mes_ano, ds_ano_trimestre)
-VALUES (-1, '1900-01-01', 1900, 1, 1, 1, 1, 1, 'UNKNOWN', FALSE, 'UNKNOWN', 'UNKNOWN');
+-- Registro UNKNOWN
+INSERT INTO gold.DIM_TMP (TMP_SRK, DAT_COM, NUM_ANO, NUM_MES, NUM_DIA, NUM_TRI, NUM_SEM_EPI, NUM_DIA_SEM, NOM_DIA, IND_FDS, DES_MES_ANO, DES_ANO_TRI)
+VALUES (-1, '1900-01-01', 1900, 1, 1, 1, 1, 1, 'UNKNOWN', 0, 'UNKNOWN', 'UNKNOWN');
 
--- DIMENSÃO 2: dim_loc (Localização)
-CREATE TABLE gold.dim_loc (
-    sk_loc SERIAL PRIMARY KEY,
-    sg_uf TEXT NOT NULL UNIQUE,
-    nm_uf TEXT NOT NULL,
-    nm_regiao TEXT NOT NULL,
-    cd_ibge INTEGER,
-    nm_capital TEXT,
-    ts_carga TIMESTAMP DEFAULT NOW()
+-- DIMENSAO 2: DIM_LOC (Localizacao)
+CREATE TABLE gold.DIM_LOC (
+    LOC_SRK BIGINT PRIMARY KEY,
+    SIG_UNF CHAR(2) NOT NULL UNIQUE,
+    NOM_UNF VARCHAR(50) NOT NULL,
+    NOM_REG VARCHAR(20) NOT NULL,
+    COD_IBG INTEGER,
+    NOM_CAP VARCHAR(50)
 );
 
--- Registro UNKNOWN para valores ausentes
-INSERT INTO gold.dim_loc (sk_loc, sg_uf, nm_uf, nm_regiao, cd_ibge, nm_capital)
-VALUES (-1, 'UNKNOWN', 'UNKNOWN', 'UNKNOWN', -1, 'UNKNOWN');
+-- Registro UNKNOWN
+INSERT INTO gold.DIM_LOC (LOC_SRK, SIG_UNF, NOM_UNF, NOM_REG, COD_IBG, NOM_CAP)
+VALUES (-1, 'XX', 'UNKNOWN', 'UNKNOWN', -1, 'UNKNOWN');
 
--- DIMENSÃO 3: dim_pac (Paciente)
-CREATE TABLE gold.dim_pac (
-    sk_pac SERIAL PRIMARY KEY,
-    nk_demografica TEXT NOT NULL UNIQUE, -- business key
-    ds_faixa_etaria TEXT NOT NULL,
-    ds_sexo TEXT NOT NULL,
-    ds_raca TEXT NOT NULL,
-    ds_faixa_etaria_det TEXT NOT NULL,
-    ts_carga TIMESTAMP DEFAULT NOW()
+-- DIMENSAO 3: DIM_PAC (Paciente)
+CREATE TABLE gold.DIM_PAC (
+    PAC_SRK BIGINT PRIMARY KEY,
+    COD_DEM VARCHAR(50) NOT NULL UNIQUE,
+    DES_FAI_ETA VARCHAR(30) NOT NULL,
+    DES_SEX VARCHAR(20) NOT NULL,
+    DES_RAC VARCHAR(30) NOT NULL,
+    DES_FAI_ETA_DET VARCHAR(50) NOT NULL
 );
 
--- Registro UNKNOWN para valores ausentes
-INSERT INTO gold.dim_pac (sk_pac, nk_demografica, ds_faixa_etaria, ds_sexo, ds_raca, ds_faixa_etaria_det)
+-- Registro UNKNOWN
+INSERT INTO gold.DIM_PAC (PAC_SRK, COD_DEM, DES_FAI_ETA, DES_SEX, DES_RAC, DES_FAI_ETA_DET)
 VALUES (-1, 'UNKNOWN', 'UNKNOWN', 'UNKNOWN', 'UNKNOWN', 'UNKNOWN');
 
--- DIMENSÃO 4: dim_cls (Classificação)
-CREATE TABLE gold.dim_cls (
-    sk_cls SERIAL PRIMARY KEY,
-    cd_classificacao TEXT NOT NULL UNIQUE, -- natural key
-    ds_classificacao TEXT NOT NULL,
-    ds_grupo TEXT NOT NULL,
-    ds_gravidade TEXT NOT NULL,
-    cd_cid TEXT,
-    flag_confirmado BOOLEAN NOT NULL,
-    ts_carga TIMESTAMP DEFAULT NOW()
+-- DIMENSAO 4: DIM_CLS (Classificacao)
+CREATE TABLE gold.DIM_CLS (
+    CLS_SRK BIGINT PRIMARY KEY,
+    COD_CLS VARCHAR(10) NOT NULL UNIQUE,
+    DES_CLS VARCHAR(50) NOT NULL,
+    DES_GRP VARCHAR(30) NOT NULL,
+    DES_GRA VARCHAR(20) NOT NULL,
+    COD_CID VARCHAR(10),
+    IND_CON INTEGER NOT NULL
 );
 
--- Registro UNKNOWN para valores ausentes
-INSERT INTO gold.dim_cls (sk_cls, cd_classificacao, ds_classificacao, ds_grupo, ds_gravidade, cd_cid, flag_confirmado)
-VALUES (-1, 'UNKNOWN', 'UNKNOWN', 'UNKNOWN', 'UNKNOWN', 'UNKNOWN', FALSE);
+-- Registro UNKNOWN
+INSERT INTO gold.DIM_CLS (CLS_SRK, COD_CLS, DES_CLS, DES_GRP, DES_GRA, COD_CID, IND_CON)
+VALUES (-1, 'UNKNOWN', 'UNKNOWN', 'UNKNOWN', 'UNKNOWN', 'UNKNOWN', 0);
 
--- DIMENSÃO 5: dim_evl (Evolução)
-CREATE TABLE gold.dim_evl (
-    sk_evl SERIAL PRIMARY KEY,
-    cd_evolucao TEXT NOT NULL UNIQUE, -- natural key
-    ds_evolucao TEXT NOT NULL,
-    ds_tipo_evolucao TEXT NOT NULL,
-    flag_obito BOOLEAN NOT NULL,
-    ds_gravidade_desfecho TEXT NOT NULL,
-    ts_carga TIMESTAMP DEFAULT NOW()
+-- DIMENSAO 5: DIM_EVL (Evolucao)
+CREATE TABLE gold.DIM_EVL (
+    EVL_SRK BIGINT PRIMARY KEY,
+    COD_EVL VARCHAR(10) NOT NULL UNIQUE,
+    DES_EVL VARCHAR(50) NOT NULL,
+    TIP_EVL VARCHAR(30) NOT NULL,
+    IND_OBI INTEGER NOT NULL,
+    DES_GRA_DES VARCHAR(30) NOT NULL
 );
 
--- Registro UNKNOWN para valores ausentes
-INSERT INTO gold.dim_evl (sk_evl, cd_evolucao, ds_evolucao, ds_tipo_evolucao, flag_obito, ds_gravidade_desfecho)
-VALUES (-1, 'UNKNOWN', 'UNKNOWN', 'UNKNOWN', FALSE, 'UNKNOWN');
+-- Registro UNKNOWN
+INSERT INTO gold.DIM_EVL (EVL_SRK, COD_EVL, DES_EVL, TIP_EVL, IND_OBI, DES_GRA_DES)
+VALUES (-1, 'UNKNOWN', 'UNKNOWN', 'UNKNOWN', 0, 'UNKNOWN');
 
--- DIMENSÃO 6: dim_snt (Sintomas) - Agregada
-CREATE TABLE gold.dim_snt (
-    sk_snt SERIAL PRIMARY KEY,
-    nk_sintomas TEXT NOT NULL UNIQUE, -- business key
-    ds_faixa_sintomas TEXT NOT NULL,
-    ds_faixa_alarmes TEXT NOT NULL,
-    ds_perfil_clinico TEXT NOT NULL,
-    flag_tem_sintomas BOOLEAN NOT NULL,
-    flag_tem_alarmes BOOLEAN NOT NULL,
-    ts_carga TIMESTAMP DEFAULT NOW()
+-- DIMENSAO 6: DIM_SNT (Sintomas)
+CREATE TABLE gold.DIM_SNT (
+    SNT_SRK BIGINT PRIMARY KEY,
+    COD_SNT VARCHAR(20) NOT NULL UNIQUE,
+    DES_FAI_SNT VARCHAR(20) NOT NULL,
+    DES_FAI_ALR VARCHAR(20) NOT NULL,
+    DES_PER_CLI VARCHAR(30) NOT NULL,
+    IND_SNT INTEGER NOT NULL,
+    IND_ALR INTEGER NOT NULL
 );
 
--- Registro UNKNOWN para valores ausentes
-INSERT INTO gold.dim_snt (sk_snt, nk_sintomas, ds_faixa_sintomas, ds_faixa_alarmes, ds_perfil_clinico, flag_tem_sintomas, flag_tem_alarmes)
-VALUES (-1, 'UNKNOWN', 'UNKNOWN', 'UNKNOWN', 'UNKNOWN', FALSE, FALSE);
+-- Registro UNKNOWN
+INSERT INTO gold.DIM_SNT (SNT_SRK, COD_SNT, DES_FAI_SNT, DES_FAI_ALR, DES_PER_CLI, IND_SNT, IND_ALR)
+VALUES (-1, 'UNKNOWN', 'UNKNOWN', 'UNKNOWN', 'UNKNOWN', 0, 0);
 
 -- =============================================
 -- TABELA FATO
 -- =============================================
 
--- FATO: ft_deng (Dengue)
-CREATE TABLE gold.ft_deng (
-    sk_fato BIGSERIAL PRIMARY KEY,
-    nk_notificacao INTEGER NOT NULL,
-    
-    -- Foreign Keys para Dimensões
-    fk_tmp INTEGER NOT NULL REFERENCES gold.dim_tmp(sk_tmp),
-    fk_loc INTEGER NOT NULL REFERENCES gold.dim_loc(sk_loc),
-    fk_pac INTEGER NOT NULL REFERENCES gold.dim_pac(sk_pac),
-    fk_cls INTEGER NOT NULL REFERENCES gold.dim_cls(sk_cls),
-    fk_evl INTEGER NOT NULL REFERENCES gold.dim_evl(sk_evl),
-    fk_snt INTEGER NOT NULL REFERENCES gold.dim_snt(sk_snt),
-    
-    -- Métricas Aditivas
-    vl_confirmado INTEGER NOT NULL CHECK (vl_confirmado IN (0,1)),
-    vl_grave INTEGER NOT NULL CHECK (vl_grave IN (0,1)),
-    vl_obito INTEGER NOT NULL CHECK (vl_obito IN (0,1)),
-    vl_hospitalizado INTEGER NOT NULL CHECK (vl_hospitalizado IN (0,1)),
-    vl_qtd_sintomas INTEGER NOT NULL CHECK (vl_qtd_sintomas >= 0 AND vl_qtd_sintomas <= 9),
-    vl_qtd_alarmes INTEGER NOT NULL CHECK (vl_qtd_alarmes >= 0 AND vl_qtd_alarmes <= 8),
-    
-    -- Métricas Semi-aditivas
-    vl_idade_anos REAL CHECK (vl_idade_anos >= 0 AND vl_idade_anos <= 120),
-    
-    -- Timestamps
-    dt_notificacao DATE NOT NULL,
-    dt_sintomas DATE,
-    ts_carga TIMESTAMP DEFAULT NOW()
+CREATE TABLE gold.FAT_DEN (
+    FAT_SRK BIGINT PRIMARY KEY,
+    NUM_NOT BIGINT NOT NULL,
+
+    -- Foreign Keys para Dimensoes
+    TMP_SRK BIGINT NOT NULL,
+    LOC_SRK BIGINT NOT NULL,
+    PAC_SRK BIGINT NOT NULL,
+    CLS_SRK BIGINT NOT NULL,
+    EVL_SRK BIGINT NOT NULL,
+    SNT_SRK BIGINT NOT NULL,
+
+    -- Metricas Aditivas
+    VAL_CON INTEGER NOT NULL,
+    VAL_GRA INTEGER NOT NULL,
+    VAL_OBI INTEGER NOT NULL,
+    VAL_HOS INTEGER NOT NULL,
+    QTD_SNT INTEGER NOT NULL,
+    QTD_ALR INTEGER NOT NULL,
+
+    -- Metricas Semi-aditivas
+    VAL_IDA NUMERIC(5,2),
+
+    -- Datas
+    DAT_NOT DATE NOT NULL,
+    DAT_SNT DATE,
+
+    -- Constraints
+    FOREIGN KEY (TMP_SRK) REFERENCES gold.DIM_TMP(TMP_SRK),
+    FOREIGN KEY (LOC_SRK) REFERENCES gold.DIM_LOC(LOC_SRK),
+    FOREIGN KEY (PAC_SRK) REFERENCES gold.DIM_PAC(PAC_SRK),
+    FOREIGN KEY (CLS_SRK) REFERENCES gold.DIM_CLS(CLS_SRK),
+    FOREIGN KEY (EVL_SRK) REFERENCES gold.DIM_EVL(EVL_SRK),
+    FOREIGN KEY (SNT_SRK) REFERENCES gold.DIM_SNT(SNT_SRK)
 );
 
 -- =============================================
--- ÍNDICES DE PERFORMANCE
+-- COMENTARIOS DIM_TMP (TEMPO)
 -- =============================================
 
--- Índices nas Foreign Keys da fato
-CREATE INDEX idx_ft_deng_fk_tmp ON gold.ft_deng(fk_tmp);
-CREATE INDEX idx_ft_deng_fk_loc ON gold.ft_deng(fk_loc);
-CREATE INDEX idx_ft_deng_fk_pac ON gold.ft_deng(fk_pac);
-CREATE INDEX idx_ft_deng_fk_cls ON gold.ft_deng(fk_cls);
-CREATE INDEX idx_ft_deng_fk_evl ON gold.ft_deng(fk_evl);
-CREATE INDEX idx_ft_deng_fk_snt ON gold.ft_deng(fk_snt);
-
--- Índices compostos para queries frequentes
-CREATE INDEX idx_ft_deng_tmp_loc ON gold.ft_deng(fk_tmp, fk_loc);
-CREATE INDEX idx_ft_deng_confirmado_grave ON gold.ft_deng(vl_confirmado, vl_grave);
-
--- Índices nas dimensões
-CREATE INDEX idx_dim_tmp_ano_mes ON gold.dim_tmp(nr_ano, nr_mes);
-CREATE INDEX idx_dim_tmp_semana_epi ON gold.dim_tmp(nr_semana_epi);
-CREATE INDEX idx_dim_loc_regiao ON gold.dim_loc(nm_regiao);
+COMMENT ON COLUMN gold.DIM_TMP.TMP_SRK IS 'Chave Primaria Artificial (Surrogate Key) do Tempo';
+COMMENT ON COLUMN gold.DIM_TMP.DAT_COM IS 'Data completa no formato YYYY-MM-DD';
+COMMENT ON COLUMN gold.DIM_TMP.NUM_ANO IS 'Ano (2024, 2025, 2026)';
+COMMENT ON COLUMN gold.DIM_TMP.NUM_MES IS 'Mes (1-12)';
+COMMENT ON COLUMN gold.DIM_TMP.NUM_DIA IS 'Dia do mes (1-31)';
+COMMENT ON COLUMN gold.DIM_TMP.NUM_TRI IS 'Trimestre (1-4)';
+COMMENT ON COLUMN gold.DIM_TMP.NUM_SEM_EPI IS 'Semana epidemiologica (1-53)';
+COMMENT ON COLUMN gold.DIM_TMP.NUM_DIA_SEM IS 'Dia da semana ISO (1=Segunda, 7=Domingo)';
+COMMENT ON COLUMN gold.DIM_TMP.NOM_DIA IS 'Nome do dia da semana';
+COMMENT ON COLUMN gold.DIM_TMP.IND_FDS IS 'Indicador de fim de semana (1=Sim, 0=Nao)';
+COMMENT ON COLUMN gold.DIM_TMP.DES_MES_ANO IS 'Descricao Mes/Ano formato YYYY-MM';
+COMMENT ON COLUMN gold.DIM_TMP.DES_ANO_TRI IS 'Descricao Ano/Trimestre formato YYYY-QN';
 
 -- =============================================
--- COMENTÁRIOS PARA DOCUMENTAÇÃO
+-- COMENTARIOS DIM_LOC (LOCALIZACAO)
 -- =============================================
 
-COMMENT ON SCHEMA gold IS 'Gold Layer - Data Warehouse Dengue - Star Schema';
+COMMENT ON COLUMN gold.DIM_LOC.LOC_SRK IS 'Chave Primaria Artificial (Surrogate Key) da Localizacao';
+COMMENT ON COLUMN gold.DIM_LOC.SIG_UNF IS 'Sigla da Unidade Federativa (SP, MG, RJ)';
+COMMENT ON COLUMN gold.DIM_LOC.NOM_UNF IS 'Nome completo da Unidade Federativa';
+COMMENT ON COLUMN gold.DIM_LOC.NOM_REG IS 'Nome da Regiao (Norte, Nordeste, Sul, Sudeste, Centro-Oeste)';
+COMMENT ON COLUMN gold.DIM_LOC.COD_IBG IS 'Codigo IBGE da UF';
+COMMENT ON COLUMN gold.DIM_LOC.NOM_CAP IS 'Nome da capital do estado';
 
-COMMENT ON TABLE gold.ft_deng IS 'Tabela Fato: Notificações individuais de dengue';
-COMMENT ON TABLE gold.dim_tmp IS 'Dimensão Temporal: Hierarquia de datas epidemiológicas';
-COMMENT ON TABLE gold.dim_loc IS 'Dimensão Geográfica: UFs e regiões';
-COMMENT ON TABLE gold.dim_pac IS 'Dimensão Demográfica: Perfil dos pacientes';
-COMMENT ON TABLE gold.dim_cls IS 'Dimensão Clínica: Classificação epidemiológica';
-COMMENT ON TABLE gold.dim_evl IS 'Dimensão Desfecho: Evolução clínica dos casos';
-COMMENT ON TABLE gold.dim_snt IS 'Dimensão Sintomatológica: Perfil de sintomas agregado';
+-- =============================================
+-- COMENTARIOS DIM_PAC (PACIENTE)
+-- =============================================
 
--- Comentários colunas fato
-COMMENT ON COLUMN gold.ft_deng.vl_confirmado IS 'Flag caso confirmado (0/1) - Métrica aditiva';
-COMMENT ON COLUMN gold.ft_deng.vl_grave IS 'Flag caso grave (0/1) - Métrica aditiva';
-COMMENT ON COLUMN gold.ft_deng.vl_obito IS 'Flag óbito (0/1) - Métrica aditiva';
-COMMENT ON COLUMN gold.ft_deng.vl_hospitalizado IS 'Flag hospitalização (0/1) - Métrica aditiva';
-COMMENT ON COLUMN gold.ft_deng.vl_qtd_sintomas IS 'Quantidade sintomas (0-9) - Métrica aditiva';
-COMMENT ON COLUMN gold.ft_deng.vl_qtd_alarmes IS 'Quantidade alarmes (0-8) - Métrica aditiva';
-COMMENT ON COLUMN gold.ft_deng.vl_idade_anos IS 'Idade em anos - Métrica SEMI-ADITIVA (média válida, soma não)';
+COMMENT ON COLUMN gold.DIM_PAC.PAC_SRK IS 'Chave Primaria Artificial (Surrogate Key) do Paciente';
+COMMENT ON COLUMN gold.DIM_PAC.COD_DEM IS 'Chave natural demografica (faixa+sexo+raca)';
+COMMENT ON COLUMN gold.DIM_PAC.DES_FAI_ETA IS 'Descricao da faixa etaria';
+COMMENT ON COLUMN gold.DIM_PAC.DES_SEX IS 'Descricao do sexo (Masculino, Feminino, Ignorado)';
+COMMENT ON COLUMN gold.DIM_PAC.DES_RAC IS 'Descricao da raca/cor';
+COMMENT ON COLUMN gold.DIM_PAC.DES_FAI_ETA_DET IS 'Descricao da faixa etaria detalhada';
+
+-- =============================================
+-- COMENTARIOS DIM_CLS (CLASSIFICACAO)
+-- =============================================
+
+COMMENT ON COLUMN gold.DIM_CLS.CLS_SRK IS 'Chave Primaria Artificial (Surrogate Key) da Classificacao';
+COMMENT ON COLUMN gold.DIM_CLS.COD_CLS IS 'Codigo da classificacao epidemiologica';
+COMMENT ON COLUMN gold.DIM_CLS.DES_CLS IS 'Descricao da classificacao (Dengue, Dengue Grave, etc.)';
+COMMENT ON COLUMN gold.DIM_CLS.DES_GRP IS 'Grupo (Confirmado, Descartado, Em Investigacao)';
+COMMENT ON COLUMN gold.DIM_CLS.DES_GRA IS 'Gravidade (Leve, Moderado, Grave)';
+COMMENT ON COLUMN gold.DIM_CLS.COD_CID IS 'Codigo CID-10 (A90, A91.0)';
+COMMENT ON COLUMN gold.DIM_CLS.IND_CON IS 'Indicador de caso confirmado (1=Sim, 0=Nao)';
+
+-- =============================================
+-- COMENTARIOS DIM_EVL (EVOLUCAO)
+-- =============================================
+
+COMMENT ON COLUMN gold.DIM_EVL.EVL_SRK IS 'Chave Primaria Artificial (Surrogate Key) da Evolucao';
+COMMENT ON COLUMN gold.DIM_EVL.COD_EVL IS 'Codigo da evolucao clinica';
+COMMENT ON COLUMN gold.DIM_EVL.DES_EVL IS 'Descricao da evolucao (Cura, Obito pelo agravo, etc.)';
+COMMENT ON COLUMN gold.DIM_EVL.TIP_EVL IS 'Tipo de evolucao (Cura, Obito, Em investigacao)';
+COMMENT ON COLUMN gold.DIM_EVL.IND_OBI IS 'Indicador de obito (1=Sim, 0=Nao)';
+COMMENT ON COLUMN gold.DIM_EVL.DES_GRA_DES IS 'Gravidade do desfecho (Favoravel, Desfavoravel, Indeterminado)';
+
+-- =============================================
+-- COMENTARIOS DIM_SNT (SINTOMAS)
+-- =============================================
+
+COMMENT ON COLUMN gold.DIM_SNT.SNT_SRK IS 'Chave Primaria Artificial (Surrogate Key) dos Sintomas';
+COMMENT ON COLUMN gold.DIM_SNT.COD_SNT IS 'Chave natural de sintomas (faixa_sint+faixa_alarm)';
+COMMENT ON COLUMN gold.DIM_SNT.DES_FAI_SNT IS 'Faixa de quantidade de sintomas (0, 1-2, 3-5, 6+)';
+COMMENT ON COLUMN gold.DIM_SNT.DES_FAI_ALR IS 'Faixa de quantidade de alarmes (0, 1, 2+, 3+)';
+COMMENT ON COLUMN gold.DIM_SNT.DES_PER_CLI IS 'Perfil clinico (Assintomatico, Leve, Moderado, Grave)';
+COMMENT ON COLUMN gold.DIM_SNT.IND_SNT IS 'Indicador de presenca de sintomas (1=Sim, 0=Nao)';
+COMMENT ON COLUMN gold.DIM_SNT.IND_ALR IS 'Indicador de presenca de alarmes (1=Sim, 0=Nao)';
+
+-- =============================================
+-- COMENTARIOS FAT_DEN (FATO DENGUE)
+-- =============================================
+
+COMMENT ON COLUMN gold.FAT_DEN.FAT_SRK IS 'Chave Primaria Artificial (Surrogate Key) do Fato';
+COMMENT ON COLUMN gold.FAT_DEN.NUM_NOT IS 'Numero da notificacao SINAN (Chave Natural)';
+COMMENT ON COLUMN gold.FAT_DEN.TMP_SRK IS 'Chave Estrangeira para Dimensao Tempo';
+COMMENT ON COLUMN gold.FAT_DEN.LOC_SRK IS 'Chave Estrangeira para Dimensao Localizacao';
+COMMENT ON COLUMN gold.FAT_DEN.PAC_SRK IS 'Chave Estrangeira para Dimensao Paciente';
+COMMENT ON COLUMN gold.FAT_DEN.CLS_SRK IS 'Chave Estrangeira para Dimensao Classificacao';
+COMMENT ON COLUMN gold.FAT_DEN.EVL_SRK IS 'Chave Estrangeira para Dimensao Evolucao';
+COMMENT ON COLUMN gold.FAT_DEN.SNT_SRK IS 'Chave Estrangeira para Dimensao Sintomas';
+COMMENT ON COLUMN gold.FAT_DEN.VAL_CON IS 'Valor indicador de caso confirmado (0/1) - Metrica Aditiva';
+COMMENT ON COLUMN gold.FAT_DEN.VAL_GRA IS 'Valor indicador de caso grave (0/1) - Metrica Aditiva';
+COMMENT ON COLUMN gold.FAT_DEN.VAL_OBI IS 'Valor indicador de obito (0/1) - Metrica Aditiva';
+COMMENT ON COLUMN gold.FAT_DEN.VAL_HOS IS 'Valor indicador de hospitalizacao (0/1) - Metrica Aditiva';
+COMMENT ON COLUMN gold.FAT_DEN.QTD_SNT IS 'Quantidade de sintomas (0-9) - Metrica Aditiva';
+COMMENT ON COLUMN gold.FAT_DEN.QTD_ALR IS 'Quantidade de alarmes (0-8) - Metrica Aditiva';
+COMMENT ON COLUMN gold.FAT_DEN.VAL_IDA IS 'Idade em anos - Metrica SEMI-ADITIVA (media valida, soma nao)';
+COMMENT ON COLUMN gold.FAT_DEN.DAT_NOT IS 'Data da notificacao';
+COMMENT ON COLUMN gold.FAT_DEN.DAT_SNT IS 'Data dos primeiros sintomas';
