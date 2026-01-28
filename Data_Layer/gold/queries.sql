@@ -20,8 +20,8 @@ WITH LetalidadeUF AS (
                 ELSE 0 
             END, 2
         ) AS Percentual_Gravidade
-    FROM gold.FAT_DEN f
-    JOIN gold.DIM_LOC l ON f.LOC_SRK = l.LOC_SRK
+    FROM dw.FAT_DEN f
+    JOIN dw.DIM_LOC l ON f.LOC_SRK = l.LOC_SRK
     WHERE f.VAL_CON = 1
     GROUP BY l.SIG_UNF, l.NOM_UNF, l.NOM_REG
     HAVING SUM(f.VAL_CON) >= 1000  -- Filtro para significancia estatistica
@@ -65,8 +65,8 @@ WITH PerfilDemografico AS (
         SUM(f.VAL_OBI) AS Obitos,
         SUM(f.VAL_HOS) AS Hospitalizacoes,
         ROUND(AVG(f.VAL_IDA), 1) AS Idade_Media
-    FROM gold.FAT_DEN f
-    JOIN gold.DIM_PAC p ON f.PAC_SRK = p.PAC_SRK
+    FROM dw.FAT_DEN f
+    JOIN dw.DIM_PAC p ON f.PAC_SRK = p.PAC_SRK
     WHERE f.VAL_CON = 1
     GROUP BY p.DES_FAI_ETA_DET, p.DES_SEX, p.DES_RAC
     HAVING COUNT(*) >= 100  -- Minimo para relevancia estatistica
@@ -113,9 +113,9 @@ WITH CasosPorSemana AS (
         SUM(f.VAL_OBI) AS Obitos,
         AVG(f.QTD_SNT) AS Media_Sintomas,
         AVG(f.QTD_ALR) AS Media_Alarmes
-    FROM gold.FAT_DEN f
-    JOIN gold.DIM_TMP t ON f.TMP_SRK = t.TMP_SRK
-    JOIN gold.DIM_LOC l ON f.LOC_SRK = l.LOC_SRK
+    FROM dw.FAT_DEN f
+    JOIN dw.DIM_TMP t ON f.TMP_SRK = t.TMP_SRK
+    JOIN dw.DIM_LOC l ON f.LOC_SRK = l.LOC_SRK
     WHERE f.VAL_CON = 1
     GROUP BY t.NUM_ANO, t.NUM_MES, t.NUM_SEM_EPI, l.NOM_REG
 ),
@@ -180,10 +180,10 @@ WITH PerfilClinico AS (
         ROUND(AVG(f.QTD_SNT), 2) AS Media_Sintomas,
         ROUND(AVG(f.QTD_ALR), 2) AS Media_Alarmes,
         ROUND(AVG(f.VAL_IDA), 1) AS Idade_Media
-    FROM gold.FAT_DEN f
-    JOIN gold.DIM_SNT s ON f.SNT_SRK = s.SNT_SRK
-    JOIN gold.DIM_CLS c ON f.CLS_SRK = c.CLS_SRK
-    JOIN gold.DIM_EVL e ON f.EVL_SRK = e.EVL_SRK
+    FROM dw.FAT_DEN f
+    JOIN dw.DIM_SNT s ON f.SNT_SRK = s.SNT_SRK
+    JOIN dw.DIM_CLS c ON f.CLS_SRK = c.CLS_SRK
+    JOIN dw.DIM_EVL e ON f.EVL_SRK = e.EVL_SRK
     WHERE f.VAL_CON = 1
     GROUP BY s.DES_PER_CLI, s.DES_FAI_SNT, s.DES_FAI_ALR, 
              c.DES_CLS, c.DES_GRA, e.TIP_EVL, e.DES_GRA_DES
@@ -248,8 +248,8 @@ WITH EstatisticasUF AS (
                 ELSE 0 
             END, 2
         ) AS CV_Sintomas
-    FROM gold.FAT_DEN f
-    JOIN gold.DIM_LOC l ON f.LOC_SRK = l.LOC_SRK
+    FROM dw.FAT_DEN f
+    JOIN dw.DIM_LOC l ON f.LOC_SRK = l.LOC_SRK
     WHERE f.VAL_CON = 1
     GROUP BY l.SIG_UNF, l.NOM_UNF, l.NOM_REG
     HAVING COUNT(*) >= 500  -- Minimo para calculo de desvio padrao confiavel
@@ -309,52 +309,52 @@ SELECT
     'Total de Notificacoes',
     TO_CHAR(COUNT(*), 'FM999,999,999'),
     'Volume total de registros no DW'
-FROM gold.FAT_DEN
+FROM dw.FAT_DEN
 UNION ALL
 SELECT 
     'Casos Confirmados',
     TO_CHAR(SUM(VAL_CON), 'FM999,999,999'),
     'Casos com VAL_CON = 1'
-FROM gold.FAT_DEN
+FROM dw.FAT_DEN
 UNION ALL
 SELECT 
     'Taxa de Confirmacao (%)',
     TO_CHAR(ROUND((SUM(VAL_CON)::NUMERIC / COUNT(*)) * 100, 2), 'FM990.00') || '%',
     'Confirmados / Total'
-FROM gold.FAT_DEN
+FROM dw.FAT_DEN
 UNION ALL
 SELECT 
     'Casos Graves',
     TO_CHAR(SUM(VAL_GRA), 'FM999,999,999'),
     'Casos com VAL_GRA = 1'
-FROM gold.FAT_DEN
+FROM dw.FAT_DEN
 UNION ALL
 SELECT 
     'Taxa de Gravidade (%)',
     TO_CHAR(ROUND((SUM(VAL_GRA)::NUMERIC / NULLIF(SUM(VAL_CON), 0)) * 100, 2), 'FM990.00') || '%',
     'Graves / Confirmados'
-FROM gold.FAT_DEN
+FROM dw.FAT_DEN
 UNION ALL
 SELECT 
     'Total de Obitos',
     TO_CHAR(SUM(VAL_OBI), 'FM999,999,999'),
     'Casos com VAL_OBI = 1'
-FROM gold.FAT_DEN
+FROM dw.FAT_DEN
 UNION ALL
 SELECT 
     'Taxa de Letalidade (por 100k)',
     TO_CHAR(ROUND((SUM(VAL_OBI)::NUMERIC / NULLIF(SUM(VAL_CON), 0)) * 100000, 2), 'FM9,990.00'),
     'Obitos por 100k confirmados'
-FROM gold.FAT_DEN
+FROM dw.FAT_DEN
 UNION ALL
 SELECT 
     'Hospitalizacoes',
     TO_CHAR(SUM(VAL_HOS), 'FM999,999,999'),
     'Casos com VAL_HOS = 1'
-FROM gold.FAT_DEN
+FROM dw.FAT_DEN
 UNION ALL
 SELECT 
     'Taxa de Hospitalizacao (%)',
     TO_CHAR(ROUND((SUM(VAL_HOS)::NUMERIC / NULLIF(SUM(VAL_CON), 0)) * 100, 2), 'FM990.00') || '%',
     'Hospitalizados / Confirmados'
-FROM gold.FAT_DEN;
+FROM dw.FAT_DEN;
