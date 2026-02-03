@@ -409,9 +409,9 @@ WITH CasosTrimestre AS (
         SUM(f.VAL_HOS) AS Hospitalizados,
         ROUND(AVG(f.QTD_SNT), 2) AS Media_Sintomas,
         ROUND(AVG(f.QTD_ALR), 2) AS Media_Alarmes
-    FROM gold.FAT_DEN f
-    JOIN gold.DIM_TMP t ON f.TMP_SRK = t.TMP_SRK
-    JOIN gold.DIM_LOC l ON f.LOC_SRK = l.LOC_SRK
+    FROM dw.FAT_DEN f
+    JOIN dw.DIM_TMP t ON f.TMP_SRK = t.TMP_SRK
+    JOIN dw.DIM_LOC l ON f.LOC_SRK = l.LOC_SRK
     WHERE f.VAL_CON = 1
     GROUP BY t.NUM_ANO, t.NUM_TRI, t.DES_ANO_TRI, l.NOM_REG
 ),
