@@ -41,3 +41,7 @@ etl-dengue-2025/
 - **RAW (Bronze):** dados originais, preservados como coletados.
 - **Silver:** dados tratados, integrados e enriquecidos.
 - **Gold:** dados prontos para análise, em modelo estrela (fato e dimensões).
+
+## Dashboard
+
+https://app.powerbi.com/view?r=eyJrIjoiYWM3N2JlNWItYWE5Ni00Njc3LTgwNzgtNDRhYTE3YWU4NGQ0IiwidCI6ImVjMzU5YmExLTYzMGItNGQyYi1iODMzLWM4ZTZkNDhmODA1OSJ9
